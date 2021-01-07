@@ -4,6 +4,7 @@ Contents
  435K gene_cultivar_call.dataframe.gz
  114K selected_gene.counts
   78K selected_genes.txt
+  91K gene_clustK30.tab
 
 'selected genes' are the 4.4k genes containing snps which are found in ~ half the cultivars.
 	may be good to see where they fall out biologically if any end up implicated.
@@ -14,17 +15,21 @@ included to show which genes have outlying numbers of snps e.g. SORBI_3001G35390
 
 gene_cultivar_call.dataframe.gz
 
-Is a table of the 4.4k genes as observations and the nunber of snps* found in each of
+Is a table of the 4.4k genes as observations and the number of snps* found in each of
 the 362 cultivars as features.
 
 
 To widen the focus from genes to cultivars the gene_cultivar_call.dataframe
-was clustered using k-means with euclidian distances for 30 partitions (of genes)
+was clustered using k-means with euclidean distances for 30 partitions (of genes)
 
 'cultivar_k30cluster_score.dataframe' is the 362 cultivars as observations
-and the nunber of snps that cultivar has in the 30 gene clusters as features.
+and the number of snps that cultivar has in the 30 gene clusters as features.
 
-My intuition is being streached a bit thin here on how we would get an explanition 
+`gene_clustK30.tab` is a mapping from genes to the catagorical "cluster id" 
+used in 'cultivar_k30cluster_score.dataframe'. 
+
+
+My intuition is being streatched a bit thin here on how we would get an explanation 
 of why something worked if something works. 
 But happy to try. 
 
