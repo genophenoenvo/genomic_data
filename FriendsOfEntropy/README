@@ -61,3 +61,10 @@ the variance within each partition is minimized,
 which maximizes the difference between the partitions.
 In this case the first partition is "middle-ness" as commpared to the rest.
 
+
+###################################################################################
+
+A plain text record for much of the messy process may be found here:
+
+https://gist.github.com/TomConlin/6d38f8795add0230566456498164a63b
+
