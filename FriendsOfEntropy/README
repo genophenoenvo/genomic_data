@@ -6,15 +6,15 @@ Contents
   78K selected_genes.txt
   91K gene_clustK30.tab
 
-'selected genes' are the 4.4k genes containing snps which are found in ~ half the cultivars.
-	may be good to see where they fall out biologically if any end up implicated.
+'selected genes' are the 4.4k genes containing snps* which are found in approximately 
+	half the 362 cultivars.	
+	(It may be good to see where they fall out biologically if any end up implicated.)
 
-selected gene counts are the total number of snps in each gene across all cultivars 
-included to show which genes have outlying numbers of snps e.g. SORBI_3001G353900.
+selected gene counts are the total number of snps* in each gene across all cultivars 
+included to show which genes have outlying numbers of snps* e.g. SORBI_3001G353900.
 
 
-gene_cultivar_call.dataframe.gz
-
+`gene_cultivar_call.dataframe.gz`
 Is a table of the 4.4k genes as observations and the number of snps* found in each of
 the 362 cultivars as features.
 
@@ -22,17 +22,42 @@ the 362 cultivars as features.
 To widen the focus from genes to cultivars the gene_cultivar_call.dataframe
 was clustered using k-means with euclidean distances for 30 partitions (of genes)
 
-'cultivar_k30cluster_score.dataframe' is the 362 cultivars as observations
-and the number of snps that cultivar has in the 30 gene clusters as features.
+`cultivar_k30cluster_score.dataframe` is the 362 cultivars as observations
+and the number of snps* that cultivar has in the 30 gene clusters as features.
 
-`gene_clustK30.tab` is a mapping from genes to the catagorical "cluster id" 
+`gene_clustK30.tab` is a mapping from genes to the categorical "cluster id" 
 used in 'cultivar_k30cluster_score.dataframe'. 
 
 
-My intuition is being streatched a bit thin here on how we would get an explanation 
+My intuition is being stretched a bit thin here on how we would get an explanation 
 of why something worked if something works. 
 But happy to try. 
 
 Also willing to try other clustering approaches ... 
 
+
+* all snps mentioned here are restricted to the subset of apx. 3.3M out of 1.27B
+which happened to exist in only approximately half the 362 cultivars provided.
+
+The exact cut off was found by "folding" the counts about the mid point (180)
+ignoring the resulting last 5% from consideration to eliminate hi & lo outliers.
+using Otsu's** method on the remaining to chose a threshold 
+which suggested snps that occurred in 180 +/- 32 cultivars. 
+That is 64/362  or apx. 17.7% of the cultivars
+ 
+so keep a snp if it is both
+	not in at least 148 cultivars 
+	and 
+	not in more than 212 cultivars.
+
+
+Genes are selected by virtue of happening to contain one or more of these 
+snps* which exist in only about half the cultivars. As there are apx. 40k genes
+in the genome we are working with about 10% of available genes.
+
+
+** Otsu's method splits a range such that 
+the variance within each partition is minimized, 
+which maximizes the difference between the partitions.
+In this case the first partition is "middle-ness" as commpared to the rest.
 
