@@ -39,4 +39,27 @@ reduce it down to just the two identifier fields (gene and go)
     zcat mart_export.txt.gz | cut -f1,2 | grep "GO:" > VEP-gene_GO-term.tsv
 ```
 
+pull the reported snp "impact" from the extras column
+```
+grep -v '^#' vep_v2.tsv | cut -f1,4,14 | grep "SORBI_" |
+	cut -f1 -d ';' |sed 's/IMPACT=//g' > VEP_snp_gene_impact.tsv
+
+cut -f3 VEP_snp_gene_impact.tsv | sort | uniq -c | sort -nr
+   1761 MODIFIER
+     25 LOW
+     22 MODERATE
+      3 HIGH
+
+```
+
+vep IMPACT looks slightly underwhelming, but might help.
+
+note: Not seeing a link to which cultivar   
+unless it is somehow intrinsic to the snp id.
+
+
+
+
+
+
 
