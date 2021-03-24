@@ -1,1 +1,753 @@
-../../../../IshataSubSet/README_IshataSubset
+Discussions with Ishata on her one-hot file lead me to understand she 
+only considers 64 of the 363 cultifars in her final analysis
+this is an attempt to reduce noise  by tightening the focus to just those
+those cultivars under consideration.
+
+The list of cultivar names was supplied via a slack chat 
+and is recorded here as  `IshataList` 
+which is rearranged to a plain item per line list as  `Ishata.lst`
+
+
+for cultivar in $(<); do 
+	echo "../MidVep/$cultivar.vcf"; 
+done > Ishata_midvep.path
+
+
+
+ag "coding_sequence_variant" $(<Ishata_midvep.path) |
+	cut -f4 |
+	sort | 
+	uniq -c |
+	sort -nr > middling_genes.counts 
+
+wc -l <  middling_genes.counts
+4441
+
+cut -c1-8  middling_genes.counts| sumstat.r 
+       V1         
+ Min.   :    1.0  
+ 1st Qu.:   29.0  
+ Median :   46.0  
+ Mean   :  124.2  
+ 3rd Qu.:  100.0  
+ Max.   :32055.0 
+
+
+want to know about snps per gene and genes per line
+
+time\ 
+ag "coding_sequence_variant" $(<Ishata_midvep.path) |
+	cut -f1,4 |
+	sed 's|../MidVep/\(PI[0-9]*\).vcf.*\t\(.*\)|\1\t\2|' |
+	sort| uniq -c |
+	awk '{print $2 "\t" $3 "\t" $1}' > line_gene_calls.tab
+
+
+# calls per gene
+cut -f3 ./line_gene_calls.tab  | sumstat.r 
+       V1         
+ Min.   :  1.000  
+ 1st Qu.:  1.000  
+ Median :  2.000  
+ Mean   :  4.037  
+ 3rd Qu.:  3.000  
+ Max.   :645.000  
+
+# gene per line
+cut -f1 ./line_gene_calls.tab  |sort | uniq -c | cut -c1-8 | sumstat.r
+       V1      
+ Min.   :1166  
+ 1st Qu.:1964  
+ Median :2101  
+ Mean   :2135  
+ 3rd Qu.:2291  
+ Max.   :2806  
+
+
+
+# lines per gene
+cut -f2 ./line_gene_calls.tab  |sort | uniq -c | cut -c1-8 | sumstat.r
+
+       V1       
+ Min.   : 1.00  
+ 1st Qu.:22.00  
+ Median :30.00  
+ Mean   :30.77  
+ 3rd Qu.:39.00  
+ Max.   :64.00 
+
+
+
+cut -f1 ./line_gene_calls.tab  |sort | uniq -c | sort -nr |cut -c9- > selected_cultivar.txt
+wc -l < selected_cultivar.txt 
+64
+
+
+../../scripts/sp2df.awk -F'\t' line_gene_calls.tab > gene_cultivar_call.dataframe
+
+
+
+cp /dev/null cultivar_gene_onehot.txt 
+for col in $(seq 2 64) ; do 
+	cut -f "$col" gene_cultivar_call.dataframe | tr '\n' ' '|
+	sed -n 's| [2-9][0-9]*| 1|gp' >> "cultivar_gene_onehot.txt"; 
+	echo >> "cultivar_gene_onehot.txt"; 
+done
+
+
+../../scripts/onehot_jaccard.awk -F ' ' cultivar_gene_onehot.txt > cultivars_jdistance.txt
+
+wc -l <cultivars_jdistance.txt
+1953
+
+# out of  ((362^2)-362)/2  == 2016  possible  ...  close anyway
+
+
+# most similar?
+sort -k7,7nr cultivars_jdistance.txt | head
+
+35	36	PI535795	PI535796	1957	2056	0.951848
+24	25	PI526905	PI527045	1860	1998	0.930931
+7	8	PI170787	PI175919	1931	2078	0.929259
+60	63	PI656015	PI656065	2152	2403	0.895547
+46	49	PI63715	PI641817	1700	2253	0.754549
+48	54	PI641815	PI641835	1723	2289	0.75273
+47	48	PI641810	PI641815	1790	2393	0.748015
+36	47	PI535796	PI641810	1755	2362	0.743014
+35	47	PI535795	PI641810	1735	2357	0.736105
+8	50	PI175919	PI641821	1763	2427	0.726
+
+
+# least similar?
+sort -k7,7n cultivars_jdistance.txt | head
+15	61	PI196598	PI656026	534	3039	0.175716
+14	61	PI196586	PI656026	527	2998	0.175784
+5	61	PI154988	PI656026	544	3040	0.178947
+22	40	PI329435	PI566819	447	2482	0.180097
+7	22	PI170787	PI329435	488	2640	0.184848
+22	30	PI329435	PI535783	523	2821	0.185395
+37	61	PI540518	PI656026	560	3013	0.185861
+22	43	PI329435	PI586435	499	2676	0.186472
+2	61	PI152651	PI656026	563	3006	0.187292
+15	29	PI196598	PI534165	596	3154	0.188966
+
+# summary stats on jaccard distances
+cut -f7 cultivars_jdistance.txt | sumstat.r
+
+       V1        
+ Min.   :0.1757  
+ 1st Qu.:0.2957  
+ Median :0.3463  
+ Mean   :0.3769  
+ 3rd Qu.:0.4499  
+ Max.   :0.9518
+
+# summary stats on size of paiwise union of gene sets per cultivar 
+ 
+       V1      
+ Min.   :1998  
+ 1st Qu.:2812  
+ Median :3234  
+ Mean   :3112  
+ 3rd Qu.:3392  
+ Max.   :3819 
+
+
+# summary stats on size of paiwise intersection of gene sets per cultivar 
+cut -f5 cultivars_jdistance.txt | sumstat.r
+
+       V1      
+ Min.   : 447  
+ 1st Qu.: 974  
+ Median :1145  
+ Mean   :1148  
+ 3rd Qu.:1332  
+ Max.   :2152 
+
+
+cut -f1 -d ' '  cultivar_gene_onehot.txt| grep -n . | tr ':' '\t' > index_cultivar.tsv
+
+cut -f1,2,7 cultivars_jdistance.txt > jaccard-dist-mat-sparse.tsv
+
+play with it in julia running commands from scripts/gen_hclust.jl ...
+
+####################################################################################
+####################################################################################
+
+
+
+I'm having second thoughts on if I went back far enough ... 
+and I do not think I did from at least one perspective.
+
+
+That is: I am filtering on just Ishata's set of cultivars 
+but the high entropy SNPs were still found over the full set.
+
+annnddd the set of SNPs that make the cut *could* be expanded 
+if they only needed to he found in 32 instead of 180 and *contracted*
+from only being drawn from a subset of 64 cultivars. 
+But it is the expanded side that makes me worry more that the set I need 
+is not a proper subset of what I have already done.
+
+Think I have to go back to the datasets on monarch's server.
+
+####################################################################################
+####################################################################################
+
+move ishata's list to monarch4
+
+tomc@cypher /data/Projects/GenoPhenoEnvo/data $ 
+
+cp IshataSubset/Ishata.lst ~/fuse/monarch4/Projects/GenoPhenoEnvo/IshataSubSet/
+
+# partition out the set of raw cultivars
+
+for c in $(cat Ishata.lst) ; do cp ../data/Cultivar/$c* ./data; done
+
+du -sh ./data/
+7.5G	./data/
+
+# get the distributions of SNPs in this universe
+
+
+fileformat=VCFv4.2
+
+1	CHROM
+2  	POS
+3  	ID
+4   REF     
+5	ALT
+6	QUAL
+7   FILTER
+8   INFO    
+9   FORMAT  
+0	IEBG_PI155516
+
+
+# want: chrom pos alt cultivar
+
+time \
+for cult in $(ls data/PI[0-9]*.vcf.gz) ; do
+	zgrep -v "^#"   $cult |
+	gawk -F '[/:,\t]'  -v"CULTIVAR=$(basename -s .vcf.gz $cult)" \
+	 'BEGIN{OSF="\t"}$5 ~ /^A$|^C$|^T$|^G$/{print $1,$2,$5,CULTIVAR}'
+done | sort --parallel=16 -k1,1 -k2,2n -k3,3 -k4,4 > chr_loc_snp_cul.tab
+
+real	12m0.393s
+user	16m42.772s
+
+
+
+
+wc -l < chr_loc_snp_cul.tab
+196,080,945
+
+# ~200M snps
+
+next pass, accumulate gnomic locations with how many hits (from cultivars) it has
+to reject the too-sparse and the ubiquitous
+
+time \
+cut -f 1,2,3  -d ' ' chr_loc_snp_cul.tab | uniq -c | sort --parallel=16 -nr > count_snp.txt
+
+real	1m23.711s
+
+
+$ head count_snp.txt 
+     64 Chr09 993130 C
+     64 Chr09 9747149 C
+     64 Chr09 9746869 A
+     64 Chr09 9712568 G
+     64 Chr09 9706223 A
+     64 Chr09 9676176 A
+     64 Chr09 9659675 G
+     64 Chr09 9610813 G
+     64 Chr09 9602686 T
+     64 Chr09 9558966 G
+$ tail count_snp.txt 
+      1 Chr01 10002978 G
+      1 Chr01 10002695 G
+      1 Chr01 1000226 T
+      1 Chr01 1000225 C
+      1 Chr01 10001981 T
+      1 Chr01 10001325 G
+      1 Chr01 10001090 T
+      1 Chr01 10000676 G
+      1 Chr01 10000193 T
+      1 Chr01 10000129 G
+
+yep
+
+# For the  full set of cultivars I did a bunch of beating around the bush w/ outliers
+# here I want to try cutting straight to the chase.
+
+
+cut -c 1-8  count_snp.txt | uniq -c | cut -c 1-8 | sumstat.r
+       V1         
+ Min.   :  20712  
+ 1st Qu.:  41555  
+ Median : 102876  
+ Mean   : 366216  
+ 3rd Qu.: 205392  
+ Max.   :8567393  
+
+
+
+cut -c 1-8 ~/fuse/monarch4/Projects/GenoPhenoEnvo/IshataSubSet/count_snp.txt | 
+	uniq -c | awk '{print $2,$1}' | sort -n |
+	gnuplot ~/bin/gen_xy.plt > snp-per-cultivar.svg
+
+fairly smoothly increasing from the min is snps that are in all the cultivars 
+and the max being snps in only one of the cultivars.
+
+folding about 32 culivars and summing will not change the character of the curve 
+
+
+snp-from-foe
+
+cut -c 1-8 ~/fuse/monarch4/Projects/GenoPhenoEnvo/IshataSubSet/count_snp.txt |
+	uniq -c | awk '{a[(NR-1)%32]=$1}END{for(i=0;i<32;i++)print i,a[i]}' |
+	gnuplot ~/bin/gen_xy.plt > snps-from-foe.svg
+
+
+# zeroth threshold to snip the extreams 
+cut -c 1-8 ~/fuse/monarch4/Projects/GenoPhenoEnvo/IshataSubSet/count_snp.txt |
+	uniq -c | awk '{a[(NR-1)%32]=$1}END{for(i=0;i<32;i++)print a[i],i}' |
+	~/bin/otsu.awk
+27
+
+# trim by not reporting beyond 27 of 31
+cut -c 1-8 ~/fuse/monarch4/Projects/GenoPhenoEnvo/IshataSubSet/count_snp.txt |
+	uniq -c | awk '{a[(NR-1)%32]=$1}END{for(i=0;i<27;i++)print a[i],i}' |
+	~/bin/otsu.awk
+4
+
+this suggests taking snps that occur in 32 +/- 4 (or 5) cultivars could be 
+our set of discriminating snps across the cultivars.
+
+lets call it  27:37  and see what we get to keep
+
+cut -c 1-8 ~/fuse/monarch4/Projects/GenoPhenoEnvo/IshataSubSet/count_snp.txt |
+	uniq -c | awk '{a[(NR-1)%32]=$1}END{for(i=0;i<=5;i++) r+=a[i]; print r}'
+
+748,623  
+
+# what does cumulative look  like
+cut -c 1-8 ~/fuse/monarch4/Projects/GenoPhenoEnvo/IshataSubSet/count_snp.txt |
+	uniq -c | awk '{a[(NR-1)%32]=$1}END{for(i=0;i<32;i++){r+=a[i]; print i,r}}' |
+	gnuplot ~/bin/gen_xy.plt > snp-from-foe-cummulative.svg
+
+# eyeballing the cumulative curve it looks pretty linear up to about 20 ...
+# maybe I should also try a middle half cut ..
+# first replicate what we did before
+
+# next up partition out the middeling snps in the vcf file
+# last time used a "regions file with "tabix" according to my notes
+
+awk 'BEGIN{OFS="\t"}$1>26 && $1<38{print $2,$3}' count_snp.txt |
+	sort --stable -k1,1 -k2,2n | uniq > 27-37.region
+
+awk 'BEGIN{OFS="\t"}$1>15 && $1<49{print $2,$3}' count_snp.txt |
+	sort --stable -k1,1 -k2,2n | uniq > 16-48.region
+
+
+# how many high entropy snp regions?
+wc -l  < 27-37.region
+1,214,691
+
+wc -l  < 16-48.region 
+3,674,328
+
+time \
+for c in Cultivar/PI[0-9]*.vcf.gz  ; do
+ 	cultivar=$(basename -s .vcf.gz $c)
+	tabix -R 27-37.region -p vcf Cultivar/$cultivar.vcf.gz > "FOE_27-37/$cultivar.vcf"
+done
+
+real	322m3.375s
+
+
+time \
+for c in Cultivar/PI[0-9]*.vcf.gz  ; do
+	cultivar=$(basename -s .vcf.gz $c);
+	tabix -R 16-48.region -p vcf Cultivar/$cultivar.vcf.gz > "FOE_16-48/$cultivar.vcf";
+done
+
+real	967m13.641s
+
+
+
+# The resulting vcf are enriched for signal and depleted for noise 
+# w.r.t. deciding among cultivars based on SNPs.
+
+# However we take an additional filtering step considering and grouping
+# only those high entropy snps which happen to fall within a gene
+# as found by annotating the filtered vcf with the Ensembl reference assembly
+# using `vep` variant effect predictor
+
+--------------------------------------------------------
+install/update Ensembl vep & cache
+git pull 
+...
+
+
+ver=50
+
+cd ~/.vep 
+curl -O "ftp://ftp.ensemblgenomes.org/pub/plants/current/variation/vep/sorghum_bicolor_vep_$ver_Sorghum_bicolor_NCBIv3.tar.gz"
+tar -xzf "sorghum_bicolor_vep_$ver_Sorghum_bicolor_NCBIv3.tar.gz"
+rm "sorghum_bicolor_vep_$ver_Sorghum_bicolor_NCBIv3.tar.gz"
+
+
+and because why would there be agreement on designating chromosomes ....
+
+their `chr0N`  does not have a leading capital 'C' our data has
+ 
+for i in $(seq 1 9) ; do echo -e "$i\tChr0$i"; done \
+	>> ~/.vep/sorghum_bicolor/$ver_Sorghum_bicolor_NCBIv3/chr_synonyms.txt
+
+echo -e "10\tChr10" >> ~/.vep/sorghum_bicolor/$ver_Sorghum_bicolor_NCBIv3/chr_synonyms.txt
+
+
+
+--------------------------------------------------
+
+#  skip this;  run in parallel instead
+time for c in "PI[0-9]*.vcf" ; do
+	cultivar=$(basename -s .vcf $c)
+	../Ensembl/ensembl-vep/vep \
+	--offline \
+	--cache_version 50 \
+	--species sorghum_bicolor \
+	--force_overwrite \
+	-i "$c" \
+	-o "FOE_27-37/$cultivar_annotated.vcf"
+done 
+
+---------------
+
+CMD='cultivar=$(basename -s .vcf {});../Ensembl/ensembl-vep/vep --offline --cache_version 50 --species sorghum_bicolor --force_overwrite -i {} -o "FOE_27-37/$cultivar_annotated.vcf"'
+
+time ls FOE_27-37/PI[0-9]*.vcf | parallel -j24 $CMD {}
+
+real	9m15.462s
+user	195m42.100s
+
+---------------
+
+CMD='cultivar=$(basename -s .vcf {});../Ensembl/ensembl-vep/vep --offline --cache_version 50 --species sorghum_bicolor --force_overwrite -i {} -o "FOE_16-48/$cultivar_annotated.vcf"'
+
+time ls FOE_16-48/PI[0-9]*.vcf | parallel -j24 $CMD {}
+
+real	25m27.021s
+user	510m6.656s
+
+---------------
+
+##########################################################
+
+next up; filtering for falling within a gene
+
+noting this also provides an opportunity to test is more or less is better
+in that we can repeat he original path and keep only the snps designated as a
+"coding_sequence_variant" 
+and we can also expand that to introns and up/down stream regions as well
+(basically anything in the neighborhood of a gene)
+
+
+time \
+ag "coding_sequence_variant" ./FOE_27-37/PI[0-9]*_annotated.vcf |
+	cut -f1,4 |
+	sed 's|./FOE_27-37/\(PI[0-9]*\)_annotated\.vcf.*\t\(.*\)|\1\t\2|' |
+	sort| uniq -c |
+	awk '{print $2 "\t" $3 "\t" $1}' > /FOE_27-37/line_gene_calls.tab
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! something has gone wrong and there are no "_annotated.vcf" files written.
+... not out of disk ...
+
+damm. that would be almost 12 hours of compute shot
+only diff from first time is running in parallel 
+
+need to fix and redo
+
+mkdir FOE_16-48/annotated
+mkdir FOE_27-37/annotated
+
+
+# testing
+CMD='cultivar=$(basename -s .vcf {});echo $cultivar'
+ls FOE_27-37/PI[0-9]*.vcf | parallel -j24 $CMD | head
+
+PI144134
+PI152651
+PI152828
+PI152971
+PI154988
+PI157804
+PI170787
+PI175919
+PI176766
+PI179749
+
+# okay
+
+CMD='cultivar=$(basename -s .vcf {});../Ensembl/ensembl-vep/vep --offline --cache_version 50 --species sorghum_bicolor --force_overwrite -i {} -o "FOE_27-37/annotated/$cultivar.vcf"'
+echo FOE_27-37/PI144134.vcf| parallel -j2 $CMD
+
+ls -lath FOE_27-37/annotated/
+total 15M
+-rw-rw-r-- 1 tomc tomc  15M Mar 22 13:21 PI144134.vcf
+-rw-rw-r-- 1 tomc tomc  24K Mar 22 13:21 PI144134.vcf_summary.html
+-rw-rw-r-- 1 tomc tomc  28K Mar 22 13:21 PI144134.vcf_warnings.txt
+
+ls -lth  FOE_27-37/PI144134.vcf  FOE_27-37/annotated/PI144134.vcf
+-rw-rw-r-- 1 tomc tomc 15M Mar 22 13:21 FOE_27-37/annotated/PI144134.vcf
+-rw-rw-r-- 1 tomc tomc 86M Mar 19 15:00 FOE_27-37/PI144134.vcf
+
+ag 'coding_sequence_variant' FOE_27-37/annotated/PI144134.vcf | wc -l
+2215
+
+# all looks fine . hmmm
+
+
+CMD='cultivar=$(basename -s .vcf {});../Ensembl/ensembl-vep/vep --offline --cache_version 50 --species sorghum_bicolor --force_overwrite -i {} -o "FOE_27-37/annotated/$cultivar.vcf"'
+time ls FOE_27-37/PI[0-9]*.vcf | parallel -j32 $CMD
+
+real	8m52.707s
+user	240m11.685s
+
+CMD='cultivar=$(basename -s .vcf {});../Ensembl/ensembl-vep/vep --offline --cache_version 50 --species sorghum_bicolor --force_overwrite -i {} -o "FOE_16-48/annotated/$cultivar.vcf"'
+time ls FOE_16-48/PI[0-9]*.vcf | parallel -j32 $CMD
+
+real	23m28.322s
+user	644m8.595s
+
+Note: there are a huge number of warning to the effect of:
+
+```
+WARNING: Chromosome super_78 not found in annotation sources or synonyms on line nnn
+```
+
+likely effectively filtering anything not assigned to a chromosome on the assembly
+
+-----------------------------------------------------
+Lets try this again..
+
+ag "coding_sequence_variant" FOE_27-37/annotated/PI[0-9]*.vcf |
+	cut -f1,4 |
+	sed 's|FOE_27-37/annotated/\(PI[0-9]*\)\.vcf.*\t\(.*\)|\1\t\2|' |
+	sort| uniq -c |
+	awk '{print $2 "\t" $3 "\t" $1}' > ./FOE_27-37/annotated/line_gene_calls.tab
+
+head ./FOE_27-37/annotated/line_gene_calls.tab
+PI144134	SORBI_3010G001600	1
+PI144134	SORBI_3010G002201	2
+PI144134	SORBI_3010G002400	1
+PI144134	SORBI_3010G002700	2
+PI144134	SORBI_3010G003100	1
+PI144134	SORBI_3010G004800	3
+PI144134	SORBI_3010G004900	2
+PI144134	SORBI_3010G005000	1
+PI144134	SORBI_3010G005300	1
+PI144134	SORBI_3010G006300	1
+... 
+# exists! and seems fine
+
+ag "coding_sequence_variant" FOE_16-48/annotated/PI[0-9]*.vcf |
+	cut -f1,4 |
+	sed 's|FOE_16-48/annotated/\(PI[0-9]*\)\.vcf.*\t\(.*\)|\1\t\2|' |
+	sort| uniq -c |
+	awk '{print $2 "\t" $3 "\t" $1}' > ./FOE_16-48/annotated/line_gene_calls.tab
+
+
+##############
+# hi-entropy
+
+# converting to data frame structure 
+../scripts/sp2df.awk -F'\t' ./FOE_27-37/annotated/line_gene_calls.tab > ./FOE_27-37/annotated/gene_cultivar_call.dataframe
+
+# convert to one-hot (gene perturbed by hi-entropy SNP(s) in this cultivar? y/n)
+cp /dev/null ./FOE_27-37/annotated/cultivar_gene_onehot.txt 
+for col in $(seq 2 64) ; do 
+	cut -f "$col" ./FOE_27-37/annotated/gene_cultivar_call.dataframe |
+	tr '\n' ' '|
+	sed -n 's| [2-9][0-9]*| 1|gp' >> "./FOE_27-37/annotated/cultivar_gene_onehot.txt"; 
+	echo >> "./FOE_27-37/annotated/cultivar_gene_onehot.txt"; 
+done
+
+################
+# not-low-entropy
+
+# converting to data frame structure 
+../scripts/sp2df.awk -F'\t' ./FOE_16-48/annotated/line_gene_calls.tab > ./FOE_16-48/annotated/gene_cultivar_call.dataframe
+
+# convert to one-hot (gene perturbed by hi-entropy SNP(s) in this cultivar? y/n)
+cp /dev/null ./FOE_16-48/annotated/cultivar_gene_onehot.txt 
+
+for col in $(seq 2 64) ; do 
+	cut -f "$col" ./FOE_16-48/annotated/gene_cultivar_call.dataframe |
+	tr '\n' ' '|
+	sed -n 's| [2-9][0-9]*| 1|gp' >> "./FOE_16-48/annotated/cultivar_gene_onehot.txt"; 
+	echo >> "./FOE_16-48/annotated/cultivar_gene_onehot.txt"; 
+done
+
+###############################################
+
+
+# from here we go to distance matrix
+#
+# pairwise reduce the onehot genes to their Jaccard distance
+# and
+# Record an indexing of the cultivars for distance matrix and h-trees
+
+
+
+pth=./FOE_27-37/annotated
+
+
+../scripts/onehot_jaccard.awk -F ' ' $pth/cultivar_gene_onehot.txt > ./FOE_27-37/annotated/cultivars_jdistance.txt
+cut -f1 -d ' '  $pth/cultivar_gene_onehot.txt| grep -n . | tr ':' '\t' > $pth/index_cultivar.tsv
+
+
+# summary stats on jaccard distances
+cut -f7 $pth/cultivars_jdistance.txt | ../scripts/sumstat.r      
+
+ Min.   :0.07143  
+ 1st Qu.:0.29183  
+ Median :0.34210  
+ Mean   :0.39371  
+ 3rd Qu.:0.46750  
+ Max.   :0.97115  
+
+# summary stats on size of paiwise union of gene sets per cultivar 
+cut -f6 $pth/cultivars_jdistance.txt | ../scripts/sumstat.r 
+
+ Min.   :279.0  
+ 1st Qu.:572.0  
+ Median :711.0  
+ Mean   :663.1  
+ 3rd Qu.:742.0  
+ Max.   :810.0  
+
+
+# summary stats on size of pairwise intersection of gene sets per cultivar 
+cut -f5 $pth/cultivars_jdistance.txt | ../scripts/sumstat.r 
+
+ Min.   : 36.0  
+ 1st Qu.:186.0  
+ Median :227.0  
+ Mean   :263.9  
+ 3rd Qu.:298.0  
+ Max.   :639.0
+
+###############################
+#
+# same for the "not-low entropy"
+
+pth=./FOE_16-48/annotated
+../scripts/onehot_jaccard.awk -F ' ' $pth/cultivar_gene_onehot.txt > ./FOE_27-37/annotated/cultivars_jdistance.txt
+cut -f1 -d ' '  $pth/cultivar_gene_onehot.txt| grep -n . | tr ':' '\t' > $pth/index_cultivar.tsv
+
+
+# summary stats on jaccard distances
+cut -f7 $pth/cultivars_jdistance.txt | ../scripts/sumstat.r      
+
+ Min.   :0.09348  
+ 1st Qu.:0.37371  
+ Median :0.43502  
+ Mean   :0.46331  
+ 3rd Qu.:0.54869  
+ Max.   :0.98325 
+
+# summary stats on size of paiwise union of gene sets per cultivar 
+cut -f6 $pth/cultivars_jdistance.txt | ../scripts/sumstat.r 
+
+ Min.   : 700  
+ 1st Qu.:1306  
+ Median :1401  
+ Mean   :1376  
+ 3rd Qu.:1471  
+ Max.   :1627 
+
+# summary stats on size of paiwise intersection of gene sets per cultivar 
+cut -f5 $pth/cultivars_jdistance.txt | ../scripts/sumstat.r
+
+ Min.   :  77.0  
+ 1st Qu.: 509.0  
+ Median : 614.0  
+ Mean   : 640.5  
+ 3rd Qu.: 757.0  
+ Max.   :1214.0 
+
+#############################################################
+
+There are _many_ choices for clustering at this point
+I am continuing with Julia
+... which I have to put on the m4 server along with R ...
+
+$ hi-entropy
+pth=./FOE_27-37/annotated
+~/bin/julia  ../scripts/gen_hclust.jl  "$pth"  cultivars_jdistance.txt
+
+
+# not-low-entropy
+pth=./FOE_16-48/annotated
+~/bin/julia  ../scripts/gen_hclust.jl  "$pth"  cultivars_jdistance.txt
+
+
+the julia script produces a full symmetric distance matrix for other processes to use
+
+and assigns a cultivar to a tree cutoff based cluster that 
+aims for a 10:1 observation (cultivar) to cluster(feature) ratio for the cut line.
+
+
+note getting the cultivars name cluster assignment can be as easy as 
+
+    join $pth/index_cultivar.tsv $pth/iss_cultivar_cluster_assignment
+ 
+###############################################
+
+what might still be nice is 
+a list of cultivars and their ... "closeness" to each of the clusters
+
+something with branch lengths maybe ...
+
+
+# gahhh
+pipenv shell
+pipenv install ete3 numpy pyqt5 lxml six
+
+
+ete3 view --text -t $pth/hcdm.tree
+
+# boom. (proves my newick tree writer at least)
+
+what I want is:
+	given  set of leaves, return their most recent common ancestor node
+		
+ 	use this function to find the root of each cluster
+
+	then find the distance from each leaf to each cluster-root as my "feature"
+
+
+will need the leaves that are in a cluster
+
+pth=./FOE_27-37/annotated
+
+awk '{c[$2] = c[$2]","$1}END{for(x in c)print x "\t" substr(c[x],2)}' \
+	$pth/iss_cultivar_cluster_assignment > $pth/cluster_cultivars.txt
+
+# not-low-entropy
+pth=./FOE_16-48/annotated
+
+awk '{c[$2] = c[$2]","$1}END{for(x in c)print x "\t" substr(c[x],2)}' \
+	$pth/iss_cultivar_cluster_assignment > $pth/cluster_cultivars.txt
+
+hmmm the cultivar membership is identical in both the hi and not-low clusters ...
+may want to go back and expand the not-lo-entropy snp set 
+to include everything but intergenic to get more genes in play.
+
+
+
