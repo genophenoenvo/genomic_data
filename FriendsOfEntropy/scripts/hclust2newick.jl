@@ -1,3 +1,4 @@
+
 function hclust2newick(hc_struct::Hclust{Float64}, flat::Bool=true)
 
 #=
@@ -71,8 +72,9 @@ end;
 
 
 #= write_newick(io:IO, hc_struct::Hclust{Float64}, flat::Bool=true) =#
-write_newick(hc_struct::Hclust{Float64}, flat=true)
-	open('newick.tree', w) do io
+
+function write_newick(io::IO, hc_struct::Hclust{Float64}, flat=true)
+	#open('newick.tree', w) do io
     	write(io, hclust2newick(hc_struct, flat))
-	end
+	#end
 end
