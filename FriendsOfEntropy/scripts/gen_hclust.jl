@@ -32,7 +32,7 @@ function main(ARGS)
     obs = maximum(sparse[1:size(sparse,1), 2]);
 
     # init a distance matrix
-    dist = zeros(obs, obs);
+    dist = zeros(obs+1, obs+1); # experiment: +1 for zeroa in outgroup?
 
     # populate the upper and lower triangles with Jaccard distances
     for i in 1:size(sparse,1)
@@ -52,7 +52,7 @@ function main(ARGS)
      (:merges, :heights, :order, :linkage, :height, :labels, :merge, :method)
 
 
-    linkage  one of
+    linkage === method one of
 
         :single (the default): use the minimum distance between any of the cluster members
         :average: use the mean distance between any of the cluster members
@@ -63,39 +63,37 @@ function main(ARGS)
         upper :U or lower :L   if unspecified expects symmetric
 
         ---------------
-    branchorder one of:
+    branchorder (order?) one of:
         :r (the default as R does): based on the node heights & original elements order
         :barjoseph (or :optimal):
+
+	merge === merges
+
+	height ===  heights
 
     =#
 
     # generate the hierarchical cluster
     hc = hclust(dist, linkage=:complete, uplo=:L, branchorder=:optimal)
 
-
-
     # lookey lou (from repl any way)
-    # plot(hc,xticks=false)
+    # plot(hc, xticks=false)
 
     #=
         oooo. grab a screen shot
 
         looks plausible. no clue how to export in useful format
         answer: have to make one!
-        write hclust2newick.jl
-
+        write scripts/hclust2newick.jl
     =#
 
     open(sdm_dir * "/hcdm.tree", "w") do io
         write_newick(io, hc)
     end
 
-
-
-
     # partition the observations into a set of clusters(features)
-    # appropriate to the number of cultivars (10:1 per folklore)
-    # hclust assignment
+    # appropriate to the number of  cultivars (observations) (10:1 per folklore)
+    # make the h-clust assignments
 
     hca = cutree(hc; k=Integer(ceil(size(hc.order)[1]/10)))
 
@@ -106,6 +104,11 @@ function main(ARGS)
     open(sdm_dir * "/iss_cultivar_cluster_assignment", "w") do io
         writedlm(io, idx_hca)
     end
+
+
+
+
+
 
 end
 
